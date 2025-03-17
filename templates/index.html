@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legal Document Assistant</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- PDF.js for PDF viewing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      :root {
+        --primary-color: #2c3e50;
+        --secondary-color: #3498db;
+        --accent-color: #e74c3c;
+        --light-bg: #f8f9fa;
+        --dark-bg: #343a40;
+        --success-color: #2ecc71;
+        --warning-color: #f39c12;
+        --danger-color: #e74c3c;
+        --text-color: #2c3e50;
+        --light-text: #ecf0f1;
+        --border-radius: 8px;
+        --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f7fa;
+        color: var(--text-color);
+        padding: 0;
+        margin: 0;
+      }
+
+      .app-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .app-header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 20px 30px;
+        border-radius: var(--border-radius);
+        margin-bottom: 30px;
+        box-shadow: var(--box-shadow);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .app-title {
+        display: flex;
+        align-items: center;
+      }
+
+      .app-header h1 {
+        margin: 0;
+        font-weight: 600;
+      }
+
+      .app-header i {
+        font-size: 2rem;
+        margin-right: 15px;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .upload-section {
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: var(--box-shadow);
+        border-top: 4px solid var(--secondary-color);
+      }
+
+      .main-container {
+        display: flex;
+        gap: 30px;
+        height: 600px; /* Fixed height for the main container */
+      }
+
+      .left-panel,
+      .right-panel {
+        width: 50%;
+        background-color: white;
+        border-radius: var(--border-radius);
+        padding: 25px;
+        box-shadow: var(--box-shadow);
+        display: flex;
+        flex-direction: column;
+        height: 100%; /* Take full height of the container */
+      }
+
+      .left-panel {
+        border-top: 4px solid var(--success-color);
+      }
+
+      .right-panel {
+        border-top: 4px solid var(--accent-color);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        justify-content: space-between;
+      }
+
+      .panel-title {
+        display: flex;
+        align-items: center;
+      }
+
+      .panel-header i {
+        font-size: 1.5rem;
+        margin-right: 10px;
+        color: var(--secondary-color);
+      }
+
+      .panel-header h3 {
+        margin: 0;
+        font-weight: 600;
+      }
+
+      .panel-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .summary-content {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+
+      .metric-card {
+        background-color: var(--light-bg);
+        border-radius: var(--border-radius);
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 4px solid var(--secondary-color);
+      }
+
+      .metric-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+      }
+
+      .metric-title i {
+        margin-right: 8px;
+        color: var(--secondary-color);
+      }
+
+      .metric-value {
+        font-size: 1.1rem;
+      }
+
+      .severity-meter {
+        height: 10px;
+        background-color: #e9ecef;
+        border-radius: 5px;
+        margin: 10px 0;
+        overflow: hidden;
+      }
+
+      .severity-fill {
+        height: 100%;
+        border-radius: 5px;
+        transition: width 0.5s ease;
+      }
+
+      .severity-low {
+        background-color: #2ecc71;
+      }
+
+      .severity-moderate {
+        background-color: #f39c12;
+      }
+
+      .severity-high {
+        background-color: #e74c3c;
+      }
+
+      .severity-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: #6c757d;
+      }
+
+      .chat-container {
+        flex-grow: 1;
+        overflow-y: auto;
+        border: 1px solid #eee;
+        border-radius: var(--border-radius);
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: var(--light-bg);
+      }
+
+      .chat-message {
+        margin-bottom: 15px;
+        padding: 12px 15px;
+        border-radius: 18px;
+        max-width: 80%;
+        word-wrap: break-word;
+        position: relative;
+        line-height: 1.5;
+      }
+
+      .user-message {
+        background-color: var(--secondary-color);
+        color: white;
+        margin-left: auto;
+        border-bottom-right-radius: 5px;
+      }
+
+      .bot-message {
+        background-color: white;
+        border: 1px solid #eee;
+        margin-right: auto;
+        border-bottom-left-radius: 5px;
+      }
+
+      .chat-input-container {
+        position: relative;
+      }
+
+      #chatInput {
+        resize: none;
+        padding-right: 50px;
+        border-radius: var(--border-radius);
+        border: 1px solid #ddd;
+      }
+
+      #sendButton {
+        position: absolute;
+        right: 10px;
+        bottom: 10px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+
+      .quick-questions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .quick-question-btn {
+        background-color: var(--light-bg);
+        border: 1px solid #ddd;
+        border-radius: 20px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .quick-question-btn:hover {
+        background-color: var(--secondary-color);
+        color: white;
+        border-color: var(--secondary-color);
+      }
+
+      .btn-primary {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+      }
+
+      .btn-primary:hover {
+        background-color: #2980b9;
+        border-color: #2980b9;
+      }
+
+      .btn-success {
+        background-color: var(--success-color);
+        border-color: var(--success-color);
+      }
+
+      .btn-success:hover {
+        background-color: #27ae60;
+        border-color: #27ae60;
+      }
+
+      .upload-icon {
+        font-size: 2rem;
+        color: var(--secondary-color);
+        margin-bottom: 15px;
+      }
+
+      .upload-area {
+        border: 2px dashed #ddd;
+        border-radius: var(--border-radius);
+        padding: 30px;
+        text-align: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .upload-area:hover {
+        border-color: var(--secondary-color);
+        background-color: rgba(52, 152, 219, 0.05);
+      }
+
+      .upload-area.active {
+        border-color: var(--secondary-color);
+        background-color: rgba(52, 152, 219, 0.1);
+      }
+
+      .upload-text {
+        color: #6c757d;
+        margin-bottom: 0;
+      }
+
+      .file-name {
+        margin-top: 10px;
+        font-weight: 500;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+      }
+
+      .action-buttons button {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .action-buttons button i {
+        margin-right: 8px;
+      }
+
+      .loading-spinner {
+        display: inline-block;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .metric-icon {
+        width: 24px;
+        text-align: center;
+      }
+
+      .urgency-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-top: 5px;
+      }
+
+      .urgency-low {
+        background-color: rgba(46, 204, 113, 0.2);
+        color: #27ae60;
+      }
+
+      .urgency-medium {
+        background-color: rgba(243, 156, 18, 0.2);
+        color: #d35400;
+      }
+
+      .urgency-high {
+        background-color: rgba(231, 76, 60, 0.2);
+        color: #c0392b;
+      }
+
+      .document-info {
+        background-color: rgba(52, 152, 219, 0.1);
+        border-radius: var(--border-radius);
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+
+      .document-info p {
+        margin-bottom: 5px;
+      }
+
+      .document-info strong {
+        color: var(--secondary-color);
+      }
+
+      .summary-section {
+        margin-top: 20px;
+      }
+
+      .summary-text {
+        line-height: 1.6;
+      }
+
+      /* Tooltip styles */
+      .tooltip-container {
+        position: relative;
+        display: inline-block;
+        margin-left: 5px;
+      }
+
+      .tooltip-icon {
+        color: #6c757d;
+        cursor: pointer;
+      }
+
+      .tooltip-text {
+        visibility: hidden;
+        width: 200px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -100px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 0.8rem;
+      }
+
+      .tooltip-container:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      /* Modal styles for PDF viewer */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s, visibility 0.3s;
+      }
+
+      .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .modal-container {
+        background-color: white;
+        width: 90%;
+        max-width: 1000px;
+        height: 80vh;
+        border-radius: var(--border-radius);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .modal-title {
+        font-weight: 600;
+        font-size: 1.2rem;
+        margin: 0;
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6c757d;
+      }
+
+      .modal-body {
+        flex-grow: 1;
+        padding: 20px;
+        overflow: auto;
+      }
+
+      #pdfViewer {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      /* Chat input controls */
+      .chat-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .form-check-input:checked {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+      }
+
+      .btn-general-chat {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+        transition: all 0.2s;
+      }
+
+      .btn-general-chat:hover {
+        background-color: #34495e;
+        border-color: #34495e;
+        transform: scale(1.05);
+      }
+
+      .btn-draft {
+        background-color: var(--warning-color);
+        border-color: var(--warning-color);
+        color: white;
+      }
+
+      .btn-draft:hover {
+        background-color: #e67e22;
+        border-color: #e67e22;
+      }
+
+      /* Download button for drafts */
+      .download-draft-btn {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 8px 15px;
+        background-color: var(--success-color);
+        color: white;
+        border-radius: var(--border-radius);
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+
+      .download-draft-btn:hover {
+        background-color: #27ae60;
+        transform: scale(1.05);
+      }
+
+      /* Responsive styles */
+      @media (max-width: 992px) {
+        .main-container {
+          flex-direction: column;
+          height: auto;
+        }
+
+        .left-panel,
+        .right-panel {
+          width: 100%;
+          height: 500px;
+          margin-bottom: 20px;
+        }
+      }
+
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+
+      /* Button styles */
+      .btn-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .btn-icon i {
+        font-size: 1rem;
+      }
+
+      .btn-reset {
+        background-color: var(--warning-color);
+        border-color: var(--warning-color);
+        color: white;
+      }
+
+      .btn-reset:hover {
+        background-color: #e67e22;
+        border-color: #e67e22;
+      }
+
+      .btn-view {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+      }
+
+      .btn-view:hover {
+        background-color: #34495e;
+        border-color: #34495e;
+      }
+
+      .btn-download {
+        background-color: var(--success-color);
+        border-color: var(--success-color);
+        color: white;
+      }
+
+      .btn-download:hover {
+        background-color: #27ae60;
+        border-color: #27ae60;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <div class="app-header">
+        <div class="app-title">
+          <i class="fas fa-balance-scale"></i>
+          <h1>Legal Document Assistant</h1>
+        </div>
+        <div class="header-actions">
+          <a
+            href="/general_chat.html"
+            class="btn btn-general-chat btn-icon"
+            title="General Legal Chat"
+          >
+            <i class="fas fa-robot"></i> Legal Chat
+          </a>
+          <button id="resetButton" class="btn btn-reset btn-icon">
+            <i class="fas fa-redo-alt"></i> Reset
+          </button>
+        </div>
+      </div>
+
+      <div class="upload-section">
+        <div class="upload-area" id="dropArea">
+          <input
+            type="file"
+            id="documentFile"
+            class="d-none"
+            accept="application/pdf"
+          />
+          <i class="fas fa-file-upload upload-icon"></i>
+          <h4>Upload Your Legal Document</h4>
+          <p class="upload-text">
+            Drag & drop your PDF file here or click to browse
+          </p>
+          <div id="fileName" class="file-name"></div>
+        </div>
+
+        <div class="action-buttons">
+          <button id="classifyButton" class="btn btn-primary">
+            <i class="fas fa-tag"></i> Classify Document
+          </button>
+          <button id="processButton" class="btn btn-success" disabled>
+            <i class="fas fa-cogs"></i> Process Document
+          </button>
+          <button id="viewDocumentButton" class="btn btn-view" disabled>
+            <i class="fas fa-eye"></i> View Document
+          </button>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <!-- Left Panel: Document Summary -->
+        <div class="left-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fas fa-file-alt"></i>
+              <h3>Document Analysis</h3>
+            </div>
+            <div class="panel-actions">
+              <button
+                id="downloadSummaryButton"
+                class="btn btn-download btn-icon"
+                disabled
+              >
+                <i class="fas fa-download"></i> Download Summary
+              </button>
+            </div>
+          </div>
+
+          <div id="categoryResult"></div>
+          <div id="summaryResult" class="summary-content"></div>
+        </div>
+
+        <!-- Right Panel: Chat Interface -->
+        <div class="right-panel">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fas fa-comments"></i>
+              <h3>Ask about this document</h3>
+            </div>
+          </div>
+
+          <div class="quick-questions" id="quickQuestions">
+            <button
+              class="quick-question-btn"
+              data-question="What is the tone of the document?"
+            >
+              What is the tone of the document?
+            </button>
+            <button
+              class="quick-question-btn"
+              data-question="Do I need an advocate for this case?"
+            >
+              Do I need an advocate?
+            </button>
+            <button
+              class="quick-question-btn"
+              data-question="What's the worst-case scenario if I don't comply?"
+            >
+              Worst-case scenario?
+            </button>
+          </div>
+
+          <div class="chat-container" id="chatContainer">
+            <div class="chat-message bot-message">
+              <p>
+                Hello! Once you've processed your document, you can ask me
+                questions about it.
+              </p>
+            </div>
+          </div>
+
+          <div class="chat-controls">
+            <div class="form-check form-switch">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="detailAnalysisToggle"
+              />
+              <label class="form-check-label" for="detailAnalysisToggle"
+                >Detailed Analysis</label
+              >
+            </div>
+            <button
+              id="generateDraftButton"
+              class="btn btn-draft btn-sm"
+              disabled
+            >
+              <i class="fas fa-file-alt"></i> Generate Response Draft
+            </button>
+          </div>
+
+          <div class="chat-input-container">
+            <textarea
+              id="chatInput"
+              class="form-control"
+              placeholder="Type your question..."
+              rows="2"
+              disabled
+            ></textarea>
+            <button id="sendButton" class="btn btn-primary" disabled>
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PDF Viewer Modal -->
+    <div id="pdfModal" class="modal-overlay">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 class="modal-title">Document Viewer</h3>
+          <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="pdfViewer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Draft Generation Modal -->
+    <div id="draftModal" class="modal-overlay">
+      <div class="modal-container" style="max-width: 600px; height: auto">
+        <div class="modal-header">
+          <h3 class="modal-title">Generate Response Draft</h3>
+          <button class="modal-close" id="closeDraftModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Describe how you want your response draft to be designed:</p>
+          <textarea
+            id="draftInstructions"
+            class="form-control"
+            rows="4"
+            placeholder="Example: Draft a formal response to the landlord regarding the lease termination..."
+          ></textarea>
+          <div class="d-flex justify-content-end mt-3">
+            <button id="submitDraftButton" class="btn btn-primary">
+              Generate Draft
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Initialize jsPDF
+      window.jsPDF = window.jspdf.jsPDF;
+
+      // Store document text globally for chat context
+      let documentText = "";
+      let documentCategory = "";
+      let documentFile = null;
+      let isDraftMode = false;
+      let currentDraftId = null;
+
+      // File upload handling
+      const dropArea = document.getElementById("dropArea");
+      const fileInput = document.getElementById("documentFile");
+      const fileName = document.getElementById("fileName");
+
+      // Add event listeners for drag and drop
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropArea.addEventListener(eventName, highlight, false);
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+      });
+
+      function highlight() {
+        dropArea.classList.add("active");
+      }
+
+      function unhighlight() {
+        dropArea.classList.remove("active");
+      }
+
+      dropArea.addEventListener("drop", handleDrop, false);
+
+      function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length) {
+          fileInput.files = files;
+          documentFile = files[0];
+          updateFileName(files[0].name);
+        }
+      }
+
+      dropArea.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", () => {
+        if (fileInput.files.length) {
+          documentFile = fileInput.files[0];
+          updateFileName(fileInput.files[0].name);
+        }
+      });
+
+      function updateFileName(name) {
+        fileName.textContent = name;
+      }
+
+      // Document classification
+      document
+        .getElementById("classifyButton")
+        .addEventListener("click", async () => {
+          const file = fileInput.files[0];
+          if (!file) {
+            showAlert("Please upload a PDF file.", "danger");
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append("document", file);
+
+          document.getElementById("categoryResult").innerHTML = `
+            <div class="d-flex justify-content-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+          try {
+            const response = await fetch("/classify", {
+              method: "POST",
+              body: formData,
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+              document.getElementById("categoryResult").innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>${result.error}
+                    </div>
+                `;
+              return;
+            }
+
+            if (result.category) {
+              documentCategory = result.category;
+              document.getElementById("categoryResult").innerHTML = `
+                    <div class="document-info">
+                        <p><strong>Document Type:</strong> ${result.category}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-success">Classified</span></p>
+                    </div>
+                `;
+              document.getElementById("processButton").disabled = false;
+              document.getElementById("processButton").dataset.category =
+                result.category;
+              document.getElementById("viewDocumentButton").disabled = false;
+            }
+          } catch (error) {
+            document.getElementById("categoryResult").innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}
+                </div>
+            `;
+          }
+        });
+
+      // Document processing
+      document
+        .getElementById("processButton")
+        .addEventListener("click", async () => {
+          const file = fileInput.files[0];
+          const category =
+            document.getElementById("processButton").dataset.category;
+
+          const formData = new FormData();
+          formData.append("document", file);
+          formData.append("category", category);
+
+          document.getElementById("summaryResult").innerHTML = `
+            <div class="d-flex justify-content-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+
+          try {
+            const response = await fetch("/process", {
+              method: "POST",
+              body: formData,
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+              document.getElementById("summaryResult").innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>${result.error}
+                    </div>
+                `;
+              return;
+            }
+
+            if (result.summary) {
+              // Store document text and enable chat
+              documentText = result.document_text || "";
+              document.getElementById("chatInput").disabled = false;
+              document.getElementById("sendButton").disabled = false;
+              document.getElementById("downloadSummaryButton").disabled = false;
+              document.getElementById("generateDraftButton").disabled = false;
+
+              // Add welcome message to chat
+              addBotMessage(
+                "I've analyzed your document. What would you like to know about it?"
+              );
+
+              // Parse and display the summary with visual elements
+              displayVisualSummary(result.summary, category);
+            }
+          } catch (error) {
+            document.getElementById("summaryResult").innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}
+                </div>
+            `;
+          }
+        });
+
+      // Function to display visual summary with metrics
+      function displayVisualSummary(summaryText, category) {
+        // Create a container for the summary
+        const summaryContainer = document.createElement("div");
+        summaryContainer.className = "summary-section";
+        summaryContainer.id = "summaryContent";
+
+        // Add a title
+        const summaryTitle = document.createElement("h4");
+        summaryTitle.innerHTML =
+          '<i class="fas fa-chart-bar me-2"></i>Document Metrics';
+        summaryContainer.appendChild(summaryTitle);
+
+        // Parse the summary text to extract metrics
+        const lines = summaryText
+          .split("\n")
+          .filter((line) => line.trim() !== "");
+
+        // Process each line to create visual metrics
+        lines.forEach((line) => {
+          if (line.includes(":")) {
+            // Split the line into metric name and value
+            let [metricName, metricValue] = line
+              .split(":")
+              .map((part) => part.trim());
+
+            // Remove Markdown-style formatting from metric name (** for bold)
+            metricName = metricName.replace(/\*\*/g, "");
+
+            // Create metric card
+            const metricCard = createMetricCard(metricName, metricValue);
+            summaryContainer.appendChild(metricCard);
+          } else {
+            // If it's not a metric, just add it as text
+            // Remove any Markdown-style formatting
+            const cleanText = line.replace(/\*\*/g, "");
+
+            const textParagraph = document.createElement("p");
+            textParagraph.className = "summary-text";
+            textParagraph.textContent = cleanText;
+            summaryContainer.appendChild(textParagraph);
+          }
+        });
+
+        // Add the summary container to the page
+        document.getElementById("summaryResult").innerHTML = "";
+        document.getElementById("summaryResult").appendChild(summaryContainer);
+      }
+
+      // Function to create a visual metric card
+      function createMetricCard(metricName, metricValue) {
+        const card = document.createElement("div");
+        card.className = "metric-card";
+
+        // Determine icon and color based on metric name
+        let icon = "fas fa-info-circle";
+        let color = "var(--secondary-color)";
+
+        if (metricName.toLowerCase().includes("severity")) {
+          icon = "fas fa-exclamation-triangle";
+          card.style.borderLeftColor = getSeverityColor(metricValue);
+        } else if (metricName.toLowerCase().includes("urgency")) {
+          icon = "fas fa-clock";
+          card.style.borderLeftColor = getUrgencyColor(metricValue);
+        } else if (metricName.toLowerCase().includes("action")) {
+          icon = "fas fa-tasks";
+          card.style.borderLeftColor = "var(--success-color)";
+        } else if (metricName.toLowerCase().includes("tone")) {
+          icon = "fas fa-comment-alt";
+        } else if (
+          metricName.toLowerCase().includes("legal") ||
+          metricName.toLowerCase().includes("consequences")
+        ) {
+          icon = "fas fa-gavel";
+          card.style.borderLeftColor = "var(--accent-color)";
+        } else if (metricName.toLowerCase().includes("financial")) {
+          icon = "fas fa-dollar-sign";
+        } else if (
+          metricName.toLowerCase().includes("rights") ||
+          metricName.toLowerCase().includes("obligations")
+        ) {
+          icon = "fas fa-balance-scale";
+        }
+
+        // Create title with icon
+        const title = document.createElement("div");
+        title.className = "metric-title";
+        title.innerHTML = `<span class="metric-icon"><i class="${icon}"></i></span> ${metricName}`;
+
+        // Create content based on metric type
+        let content = "";
+
+        if (metricName.toLowerCase().includes("severity")) {
+          // Create a severity meter
+          const severityLevel = getSeverityLevel(metricValue);
+          const severityPercentage = getSeverityPercentage(severityLevel);
+          const severityClass = getSeverityClass(severityLevel);
+
+          content = `
+                <div class="severity-meter">
+                    <div class="severity-fill ${severityClass}" style="width: ${severityPercentage}%"></div>
+                </div>
+                <div class="severity-label">
+                    <span>Low</span>
+                    <span>Moderate</span>
+                    <span>High</span>
+                </div>
+                <div class="mt-2">${metricValue}</div>
+            `;
+        } else if (metricName.toLowerCase().includes("urgency")) {
+          // Create an urgency badge
+          const urgencyLevel = getUrgencyLevel(metricValue);
+          const urgencyClass = getUrgencyClass(urgencyLevel);
+
+          content = `
+                <div>${metricValue}</div>
+                <span class="urgency-badge ${urgencyClass}">${urgencyLevel}</span>
+            `;
+        } else {
+          // Default content
+          content = `<div class="metric-value">${metricValue}</div>`;
+        }
+
+        // Create the value container
+        const valueContainer = document.createElement("div");
+        valueContainer.className = "mt-2";
+        valueContainer.innerHTML = content;
+
+        // Assemble the card
+        card.appendChild(title);
+        card.appendChild(valueContainer);
+
+        return card;
+      }
+
+      // Helper functions for severity visualization
+      function getSeverityLevel(text) {
+        text = text.toLowerCase();
+        if (text.includes("low") || text.includes("minor")) return "low";
+        if (text.includes("moderate") || text.includes("medium"))
+          return "moderate";
+        if (
+          text.includes("high") ||
+          text.includes("severe") ||
+          text.includes("critical")
+        )
+          return "high";
+        return "moderate"; // Default
+      }
+
+      function getSeverityPercentage(level) {
+        if (level === "low") return 25;
+        if (level === "moderate") return 60;
+        if (level === "high") return 95;
+        return 50; // Default
+      }
+
+      function getSeverityClass(level) {
+        if (level === "low") return "severity-low";
+        if (level === "moderate") return "severity-moderate";
+        if (level === "high") return "severity-high";
+        return "severity-moderate"; // Default
+      }
+
+      function getSeverityColor(text) {
+        const level = getSeverityLevel(text);
+        if (level === "low") return "#2ecc71";
+        if (level === "moderate") return "#f39c12";
+        if (level === "high") return "#e74c3c";
+        return "var(--secondary-color)"; // Default
+      }
+
+      // Helper functions for urgency visualization
+      function getUrgencyLevel(text) {
+        text = text.toLowerCase();
+        if (text.includes("low") || text.includes("not urgent")) return "Low";
+        if (text.includes("moderate") || text.includes("medium"))
+          return "Medium";
+        if (
+          text.includes("high") ||
+          text.includes("immediate") ||
+          text.includes("urgent")
+        )
+          return "High";
+        return "Medium"; // Default
+      }
+
+      function getUrgencyClass(level) {
+        if (level === "Low") return "urgency-low";
+        if (level === "Medium") return "urgency-medium";
+        if (level === "High") return "urgency-high";
+        return "urgency-medium"; // Default
+      }
+
+      function getUrgencyColor(text) {
+        const level = getUrgencyLevel(text);
+        if (level === "Low") return "#2ecc71";
+        if (level === "Medium") return "#f39c12";
+        if (level === "High") return "#e74c3c";
+        return "var(--secondary-color)"; // Default
+      }
+
+      // Chat functionality
+      document
+        .getElementById("sendButton")
+        .addEventListener("click", sendMessage);
+      document
+        .getElementById("chatInput")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+
+      // Quick question buttons
+      document
+        .getElementById("quickQuestions")
+        .addEventListener("click", function (e) {
+          if (e.target.classList.contains("quick-question-btn")) {
+            const question = e.target.dataset.question;
+            if (question && !document.getElementById("chatInput").disabled) {
+              document.getElementById("chatInput").value = question;
+              sendMessage();
+            }
+          }
+        });
+
+      function addUserMessage(message) {
+        const chatContainer = document.getElementById("chatContainer");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "chat-message user-message";
+        msgDiv.innerHTML = `<p>${message}</p>`;
+        chatContainer.appendChild(msgDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function addBotMessage(message, draftId = null) {
+        const chatContainer = document.getElementById("chatContainer");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "chat-message bot-message";
+
+        // Replace Markdown-style bold with HTML bold tags and handle line breaks
+        let formattedMessage = message
+          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+          .replace(/\n/g, "<br>");
+
+        // Add download button if there's a draft ID
+        if (draftId) {
+          formattedMessage += `<br><br><a href="/download-draft/${draftId}" class="download-draft-btn"><i class="fas fa-download"></i> Download Document Draft</a>`;
+        }
+
+        msgDiv.innerHTML = `<p>${formattedMessage}</p>`;
+        chatContainer.appendChild(msgDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      async function sendMessage() {
+        const chatInput = document.getElementById("chatInput");
+        const message = chatInput.value.trim();
+        const detailedAnalysis = document.getElementById(
+          "detailAnalysisToggle"
+        ).checked;
+
+        if (!message) return;
+
+        // Add user message to chat
+        addUserMessage(message);
+
+        // Clear input
+        chatInput.value = "";
+
+        // Add loading indicator
+        const chatContainer = document.getElementById("chatContainer");
+        const loadingDiv = document.createElement("div");
+        loadingDiv.className = "chat-message bot-message";
+        loadingDiv.innerHTML =
+          '<div class="d-flex align-items-center justify-content-center gap-2"><div class="loading-spinner"></div> Thinking...</div>';
+        chatContainer.appendChild(loadingDiv);
+
+        try {
+          // Send message to backend
+          const response = await fetch("/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: message,
+              category: documentCategory,
+              detailed_analysis: detailedAnalysis,
+              generate_draft: isDraftMode,
+              draft_instructions: isDraftMode
+                ? document.getElementById("draftInstructions").value
+                : "",
+            }),
+          });
+
+          const result = await response.json();
+
+          // Remove loading indicator
+          chatContainer.removeChild(loadingDiv);
+
+          if (result.error) {
+            addBotMessage(`Error: ${result.error}`);
+            return;
+          }
+
+          // Add bot response, with draft ID if available
+          addBotMessage(result.response, result.draft_id);
+
+          // Store the current draft ID if available
+          if (result.draft_id) {
+            currentDraftId = result.draft_id;
+          }
+
+          // Reset draft mode
+          isDraftMode = false;
+        } catch (error) {
+          // Remove loading indicator
+          chatContainer.removeChild(loadingDiv);
+          addBotMessage(
+            `Sorry, there was an error processing your request: ${error.message}`
+          );
+        }
+      }
+
+      // Helper function to show alerts
+      function showAlert(message, type = "info") {
+        const alertDiv = document.createElement("div");
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Insert at the top of the page
+        document
+          .querySelector(".app-container")
+          .insertBefore(
+            alertDiv,
+            document.querySelector(".app-container").firstChild
+          );
+
+        // Auto dismiss after 5 seconds
+        setTimeout(() => {
+          alertDiv.classList.remove("show");
+          setTimeout(() => alertDiv.remove(), 150);
+        }, 5000);
+      }
+
+      // Reset functionality
+      document
+        .getElementById("resetButton")
+        .addEventListener("click", function () {
+          // Reset all state variables
+          documentText = "";
+          documentCategory = "";
+          documentFile = null;
+          isDraftMode = false;
+          currentDraftId = null;
+
+          // Reset file input
+          fileInput.value = "";
+          fileName.textContent = "";
+
+          // Reset UI elements
+          document.getElementById("categoryResult").innerHTML = "";
+          document.getElementById("summaryResult").innerHTML = "";
+          document.getElementById("chatContainer").innerHTML = `
+            <div class="chat-message bot-message">
+                <p>Hello! Once you've processed your document, you can ask me questions about it.</p>
+            </div>
+        `;
+
+          // Reset toggle
+          document.getElementById("detailAnalysisToggle").checked = false;
+
+          // Disable buttons
+          document.getElementById("processButton").disabled = true;
+          document.getElementById("chatInput").disabled = true;
+          document.getElementById("sendButton").disabled = true;
+          document.getElementById("downloadSummaryButton").disabled = true;
+          document.getElementById("viewDocumentButton").disabled = true;
+          document.getElementById("generateDraftButton").disabled = true;
+
+          // Show success message
+          showAlert(
+            "Application has been reset. You can now upload a new document.",
+            "success"
+          );
+        });
+
+      // PDF Viewer functionality
+      document
+        .getElementById("viewDocumentButton")
+        .addEventListener("click", function () {
+          if (!documentFile) {
+            showAlert("No document available to view.", "warning");
+            return;
+          }
+
+          const fileReader = new FileReader();
+          fileReader.onload = function () {
+            const pdfData = new Uint8Array(this.result);
+
+            // Load the PDF using PDF.js
+            const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+            loadingTask.promise.then(function (pdf) {
+              const container = document.getElementById("pdfViewer");
+              container.innerHTML = "";
+
+              // Create a canvas for each page
+              for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                pdf.getPage(pageNum).then(function (page) {
+                  const canvas = document.createElement("canvas");
+                  container.appendChild(canvas);
+
+                  const context = canvas.getContext("2d");
+                  const viewport = page.getViewport({ scale: 1.5 });
+
+                  canvas.height = viewport.height;
+                  canvas.width = viewport.width;
+                  canvas.style.marginBottom = "20px";
+
+                  const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport,
+                  };
+
+                  page.render(renderContext);
+                });
+              }
+
+              // Show the modal
+              document.getElementById("pdfModal").classList.add("active");
+            });
+          };
+
+          fileReader.readAsArrayBuffer(documentFile);
+        });
+
+      // Close PDF Viewer
+      document
+        .getElementById("closeModal")
+        .addEventListener("click", function () {
+          document.getElementById("pdfModal").classList.remove("active");
+        });
+
+      // Close modal when clicking outside
+      document
+        .getElementById("pdfModal")
+        .addEventListener("click", function (e) {
+          if (e.target === this) {
+            this.classList.remove("active");
+          }
+        });
+
+      // Download Summary as PDF
+      document
+        .getElementById("downloadSummaryButton")
+        .addEventListener("click", function () {
+          const summaryContent = document.getElementById("summaryContent");
+
+          if (!summaryContent) {
+            showAlert("No summary available to download.", "warning");
+            return;
+          }
+
+          // Show loading message
+          showAlert("Generating PDF...", "info");
+
+          // Use html2canvas to capture the summary content
+          html2canvas(summaryContent, {
+            scale: 2,
+            willReadFrequently: true,
+          }).then((canvas) => {
+            const imgData = canvas.toDataURL("image/png");
+            const pdf = new jsPDF("p", "mm", "a4");
+
+            // PDF Page Settings - standard margins
+            const margin = 25; // 25mm margin (approximately 1 inch)
+            const pageWidth = 210; // A4 width in mm
+            const pageHeight = 297; // A4 height in mm
+
+            // Calculate available space for content
+            const contentWidth = pageWidth - 2 * margin;
+            const contentHeight = pageHeight - 2 * margin - 40; // 40mm for header
+
+            // Calculate scaling to fit on one page
+            const originalRatio = canvas.height / canvas.width;
+
+            // Calculate dimensions to maintain aspect ratio
+            let imgWidth = contentWidth;
+            let imgHeight = imgWidth * originalRatio;
+
+            // If content is too tall, scale it down to fit on one page
+            if (imgHeight > contentHeight) {
+              imgHeight = contentHeight;
+              imgWidth = imgHeight / originalRatio;
+            }
+
+            // Position for content (centered if narrower than available width)
+            const xPosition = margin + (contentWidth - imgWidth) / 2;
+            const yPosition = margin + 40; // Start after header
+
+            // Add Title
+            pdf.setFontSize(16);
+            pdf.text("Legal Document Analysis", pageWidth / 2, margin, {
+              align: "center",
+            });
+            pdf.setFontSize(12);
+            pdf.text(`Document Type: ${documentCategory}`, margin, margin + 10);
+            pdf.text(
+              `Generated on: ${new Date().toLocaleString()}`,
+              margin,
+              margin + 20
+            );
+
+            // Add content image
+            pdf.addImage(
+              imgData,
+              "PNG",
+              xPosition,
+              yPosition,
+              imgWidth,
+              imgHeight
+            );
+
+            // Save the PDF
+            pdf.save(
+              `Legal_Document_Analysis_${new Date()
+                .toISOString()
+                .slice(0, 10)}.pdf`
+            );
+
+            // Show success message
+            showAlert("PDF downloaded successfully!", "success");
+          });
+        });
+
+      // Draft generation functionality
+      document
+        .getElementById("generateDraftButton")
+        .addEventListener("click", function () {
+          if (document.getElementById("chatInput").disabled) {
+            showAlert("Please process a document first.", "warning");
+            return;
+          }
+
+          // Show the draft modal
+          document.getElementById("draftModal").classList.add("active");
+        });
+
+      // Close draft modal
+      document
+        .getElementById("closeDraftModal")
+        .addEventListener("click", function () {
+          document.getElementById("draftModal").classList.remove("active");
+        });
+
+      // Close draft modal when clicking outside
+      document
+        .getElementById("draftModal")
+        .addEventListener("click", function (e) {
+          if (e.target === this) {
+            this.classList.remove("active");
+          }
+        });
+
+      // Submit draft request
+      document
+        .getElementById("submitDraftButton")
+        .addEventListener("click", function () {
+          const instructions = document
+            .getElementById("draftInstructions")
+            .value.trim();
+
+          if (!instructions) {
+            showAlert("Please provide instructions for the draft.", "warning");
+            return;
+          }
+
+          // Set draft mode and use the instructions as the message
+          isDraftMode = true;
+          document.getElementById("chatInput").value = instructions;
+
+          // Close the modal
+          document.getElementById("draftModal").classList.remove("active");
+
+          // Send the message
+          sendMessage();
+        });
+
+      // Initialize PDF.js
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+    </script>
+  </body>
+</html>
